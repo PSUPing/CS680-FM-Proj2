@@ -1,6 +1,7 @@
-MODULE sender(ack, message)
+MODULE sender(ack)
 VAR
   state   : {sending,sent};
+  message : boolean;
   control : boolean;
 ASSIGN
   init(state) := sending;
@@ -9,6 +10,10 @@ ASSIGN
       ack = control & !(state = sent) : sent;
       TRUE                            : sending;
     esac;
+  next(message) :=
+    case
+      state = sent : {FALSE,TRUE};
+      TRUE         : message;
   next(control) :=
     case
       state = sent : !control;
@@ -78,26 +83,26 @@ FAIRNESS !input1 & !forget
 FAIRNESS input2 & !forget
 FAIRNESS !input2 & !forget
 
-MODULE bankmodel(acct_amt, oper_amt)
-VAR
-  acct_oper : {deposit,withdrawl,inquiry};
-ASSIGN
-  next(acct_oper) :=
-    case
-      deposit   : (oper_amt > 0) & ((acct_amt + oper_amt) > -1);
-      withdrawl : (oper_amt > 0) & ((acct_amt - oper_amt) > -1);
-      inquiry   : (acct_amt > -1);
-    esac;
+--MODULE bankmodel(acct_amt, oper_amt)
+--VAR
+--  acct_oper : {deposit,withdrawl,inquiry};
+--ASSIGN
+--  next(acct_oper) :=
+--    case
+--      deposit   : (oper_amt > 0) & ((acct_amt + oper_amt) > -1);
+--      withdrawl : (oper_amt > 0) & ((acct_amt - oper_amt) > -1);
+--      inquiry   : (acct_amt > -1);
+--    esac;
 
 MODULE main
 VAR
-  bank        : bankmodel(1500, 100);
-  send        : process sender(ack_channel.output, bank);
+--  bank        : bankmodel(1500, 100);
+  send        : process sender(ack_channel.output);
   recv        : process receiver(msg_channel.output1, msg_channel.output2);
-  msg_channel : process two-bit-channel(bank, send.control);
+  msg_channel : process two-bit-channel(send.message, send.control);
   ack_channel : process one-bit-channel(recv.ack);
 ASSIGN
-  init(bank.acct_oper)      := deposit;
+--  init(bank.acct_oper)      := deposit;
   init(send.control)        := FALSE;
   init(recv.expected)       := FALSE;
   init(recv.ack)            := TRUE;
