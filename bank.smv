@@ -1,0 +1,168 @@
+MODULE atm(ack,cancel,bal)
+VAR
+  state   : {sending,sent,failed};
+  message : -1000..1000;
+  control : boolean;
+  confailed : boolean;
+  output : -1000..1000;
+  balance : -1..1000;
+ASSIGN
+  init(state) := sending;
+  next(state) := 
+    case
+      ack = control & state = sending : sent;
+      cancel = confailed & state = sending : failed;
+      TRUE : sending;
+    esac;
+  next(message) :=
+    case
+      state = sent : -1000..1000;
+      TRUE         : message;
+    esac;
+  next(control) :=
+    case
+      state = sent : !control;
+      TRUE         : control;
+    esac;
+  next(confailed) :=
+    case
+      state = failed : !confailed;
+      TRUE         : confailed;
+    esac;
+
+  init(output) := 0;
+  next(output) :=
+	case
+		state=sent : -1 * message;
+		TRUE : 0;
+	esac;
+  init(balance) := 0;
+  next(balance) := 
+	case
+		state = sent : bal;
+		TRUE : -1;
+	esac;
+FAIRNESS running
+LTLSPEC G F (state = sent)
+
+MODULE bank(message, control, confailed)
+VAR
+  balance  : 0..1000;
+  failedb   : boolean;
+  state    : {receiving,received,failed};
+  ack      : boolean;
+  expected : boolean;
+  expfailed : boolean;
+ASSIGN
+  init(state) := receiving;
+  next(state) := 
+    case
+      state = receiving & (balance + message > 1000 | balance+ message < 0) : failed;
+      control = expected & state = receiving : received;
+      TRUE                                     : receiving;
+    esac;
+  next(ack) :=
+    case
+      state = received : control;
+      TRUE             : ack;
+    esac;
+  next(expected) :=
+    case
+      state = received : !expected;
+      TRUE             : expected;
+    esac;
+  next(failedb) :=
+    case
+      state = failed :  confailed;
+      TRUE             : failedb;
+    esac;
+  next(expfailed) :=
+    case
+      state = failed : !expfailed;
+      TRUE             : expfailed;
+    esac;
+  next(balance) :=
+    case
+	state = receiving & balance + message < 1001 & balance+ message > -1 : balance + message;
+        TRUE : balance;
+    esac;
+FAIRNESS running
+LTLSPEC G F (state = received)
+
+MODULE a-channel(ack, failedb, balance)
+VAR
+  forget : boolean;
+  output1 : boolean;
+  output2 : boolean;
+  output3 : 0..1000;
+ASSIGN
+  next(output1) := 
+    case
+      forget : output1;
+      TRUE   : ack; 
+    esac;
+  next(output2) := 
+    case
+      forget : output2;
+      TRUE   : failedb; 
+    esac;
+  next(output3) :=
+    case
+	forget : output3;
+	TRUE   : balance;
+    esac;
+FAIRNESS running
+FAIRNESS ack & !forget
+FAIRNESS !ack & !forget
+FAIRNESS failedb& !forget
+FAIRNESS !failedb & !forget
+
+
+MODULE b-channel(input1, input2, input3)
+VAR
+  forget  : boolean;
+  output1 : -1000..1000;
+  output2 : boolean;
+  output3 : boolean;
+ASSIGN
+  next(output1) := 
+    case
+      forget : output1;
+      TRUE   : input1;
+    esac;
+  next(output2) := 
+    case
+      forget : output2;
+      TRUE   : input2;
+    esac;
+  next(output3) := 
+    case
+      forget : output3;
+      TRUE   : input3;
+    esac;
+
+FAIRNESS running
+FAIRNESS input2 & !forget
+FAIRNESS !input2 & !forget
+FAIRNESS input3 & !forget
+FAIRNESS !input3 & !forget
+
+
+MODULE main
+VAR
+  atm0        : process atm(ack_channel.output1,ack_channel.output2, ack_channel.output3);
+  bank0       : process bank(msg_channel.output1, msg_channel.output2, msg_channel.output3);
+  msg_channel : process b-channel(atm0.message, atm0.control, atm0.confailed);
+  ack_channel : process a-channel(bank0.ack, bank0.failedb, bank0.balance);
+ASSIGN
+  init(atm0.control)         := FALSE;
+  init(atm0.confailed)       := FALSE;
+  init(bank0.expected)       := FALSE;
+  init(bank0.expfailed)      := FALSE;
+  init(bank0.ack)            := TRUE;
+  init(bank0.failedb)         := TRUE;
+  init(msg_channel.output2) := TRUE;
+  init(msg_channel.output3) := TRUE;
+  init(ack_channel.output1)  := TRUE;
+  init(ack_channel.output2)  := TRUE;
+LTLSPEC  G (atm0.state = sent -> atm0.message = msg_channel.output1)
