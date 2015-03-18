@@ -1,11 +1,11 @@
 MODULE atm(ack,cancel,bal)
 VAR
   state   : {sending,sent,failed};
-  message : -1000..1000;
+  message : -100..100;
   control : boolean;
   confailed : boolean;
-  output : -1000..1000;
-  balance : -1..1000;
+  output : -100..100;
+  balance : -1..100;
 ASSIGN
   init(state) := sending;
   next(state) := 
@@ -16,7 +16,7 @@ ASSIGN
     esac;
   next(message) :=
     case
-      state = sent : -1000..1000;
+      state = sent : -100..100;
       TRUE         : message;
     esac;
   next(control) :=
@@ -47,7 +47,7 @@ LTLSPEC G F (state = sent)
 
 MODULE bank(message, control, confailed)
 VAR
-  balance  : 0..1000;
+  balance  : 0..100;
   failedb   : boolean;
   state    : {receiving,received,failed};
   ack      : boolean;
@@ -57,7 +57,7 @@ ASSIGN
   init(state) := receiving;
   next(state) := 
     case
-      state = receiving & (balance + message > 1000 | balance+ message < 0) : failed;
+      state = receiving & (balance + message > 100 | balance+ message < 0) : failed;
       control = expected & state = receiving : received;
       TRUE                                     : receiving;
     esac;
@@ -83,7 +83,7 @@ ASSIGN
     esac;
   next(balance) :=
     case
-	state = receiving & balance + message < 1001 & balance+ message > -1 : balance + message;
+	state = receiving & balance + message < 101 & balance+ message > -1 : balance + message;
         TRUE : balance;
     esac;
 FAIRNESS running
@@ -94,7 +94,7 @@ VAR
   forget : boolean;
   output1 : boolean;
   output2 : boolean;
-  output3 : 0..1000;
+  output3 : 0..100;
 ASSIGN
   next(output1) := 
     case
@@ -121,7 +121,7 @@ FAIRNESS !failedb & !forget
 MODULE b-channel(input1, input2, input3)
 VAR
   forget  : boolean;
-  output1 : -1000..1000;
+  output1 : -100..100;
   output2 : boolean;
   output3 : boolean;
 ASSIGN
@@ -140,7 +140,6 @@ ASSIGN
       forget : output3;
       TRUE   : input3;
     esac;
-
 FAIRNESS running
 FAIRNESS input2 & !forget
 FAIRNESS !input2 & !forget
@@ -161,8 +160,10 @@ ASSIGN
   init(bank0.expfailed)      := FALSE;
   init(bank0.ack)            := TRUE;
   init(bank0.failedb)         := TRUE;
+  init(msg_channel.output1) := 0;
   init(msg_channel.output2) := TRUE;
   init(msg_channel.output3) := TRUE;
   init(ack_channel.output1)  := TRUE;
   init(ack_channel.output2)  := TRUE;
+  init(ack_channel.output3)  := 0;
 LTLSPEC  G (atm0.state = sent -> atm0.message = msg_channel.output1)
