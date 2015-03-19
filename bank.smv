@@ -42,7 +42,7 @@ ASSIGN
     state = sent : bal;
     TRUE : -1;
   esac;
---FAIRNESS running
+FAIRNESS running
 LTLSPEC G F (state = sent)
 
 MODULE bank(message, control, confailed)
@@ -86,7 +86,7 @@ ASSIGN
   state = receiving & balance + message < 101 & balance+ message > -1 : balance + message;
         TRUE : balance;
     esac;
---FAIRNESS running
+FAIRNESS running
 LTLSPEC G F (state = received)
 
 MODULE a-channel(ack, failedb, balance)
@@ -111,7 +111,7 @@ ASSIGN
   forget : output3;
   TRUE   : balance;
     esac;
---FAIRNESS running
+FAIRNESS running
 FAIRNESS ack & !forget
 FAIRNESS !ack & !forget
 FAIRNESS failedb& !forget
@@ -140,7 +140,7 @@ ASSIGN
       forget : output3;
       TRUE   : input3;
     esac;
---FAIRNESS running
+FAIRNESS running
 FAIRNESS input2 & !forget
 FAIRNESS !input2 & !forget
 FAIRNESS input3 & !forget
@@ -149,20 +149,20 @@ FAIRNESS !input3 & !forget
 
 MODULE main
 VAR
-  atm0        : atm(ack_channel.output1,ack_channel.output2, ack_channel.output3);
-  bank0       : bank(msg_channel.output1, msg_channel.output2, msg_channel.output3);
-  msg_channel : b-channel(atm0.message, atm0.control, atm0.confailed);
-  ack_channel : a-channel(bank0.ack, bank0.failedb, bank0.balance);
+  atm0        : process atm(ack_channel.output1,ack_channel.output2, ack_channel.output3);
+  bank0       : process bank(msg_channel.output1, msg_channel.output2, msg_channel.output3);
+  msg_channel : process b-channel(atm0.message, atm0.control, atm0.confailed);
+  ack_channel : process a-channel(bank0.ack, bank0.failedb, bank0.balance);
 ASSIGN
   init(atm0.control)         := FALSE;
   init(atm0.confailed)       := FALSE;
   init(bank0.expected)       := FALSE;
   init(bank0.expfailed)      := FALSE;
   init(bank0.ack)            := TRUE;
-  init(bank0.failedb)         := TRUE;
-  init(msg_channel.output1) := 0;
-  init(msg_channel.output2) := TRUE;
-  init(msg_channel.output3) := TRUE;
+  init(bank0.failedb)        := TRUE;
+  init(msg_channel.output1)  := 0;
+  init(msg_channel.output2)  := TRUE;
+  init(msg_channel.output3)  := TRUE;
   init(ack_channel.output1)  := TRUE;
   init(ack_channel.output2)  := TRUE;
   init(ack_channel.output3)  := 0;
