@@ -1,10 +1,10 @@
 MODULE atm(ack,cancel,bal)
 VAR
   state   : {sending,sent,failed};
-  message : -10..10;
+  message : -100..100;
   control : boolean;
   confailed : boolean;
-  output : -10..10;
+  output : -100..100;
   balance : -1..100;
 ASSIGN
   init(state) := sending;
@@ -16,7 +16,7 @@ ASSIGN
     esac;
   next(message) :=
     case
-      state = sent : -10..10;
+      state = sent : -100..100;
       TRUE         : message;
     esac;
   next(control) :=
@@ -32,33 +32,32 @@ ASSIGN
 
   init(output) := 0;
   next(output) :=
-	case
-		state=sent : -1 * message;
-		TRUE : 0;
-	esac;
+  case
+    state=sent : -1 * message;
+    TRUE : 0;
+  esac;
   init(balance) := 0;
   next(balance) := 
-	case
-		state = sent : bal;
-		TRUE : -1;
-	esac;
+  case
+    state = sent : bal;
+    TRUE : -1;
+  esac;
 --FAIRNESS running
 LTLSPEC G F (state = sent)
 
-MODULE bank(message, control, confailed, balance)
+MODULE bank(message, control, confailed)
 VAR
-  bal       : 0..100;
+  balance  : 0..100;
   failedb   : boolean;
-  state     : {receiving,received,failed};
-  ack       : boolean;
-  expected  : boolean;
+  state    : {receiving,received,failed};
+  ack      : boolean;
+  expected : boolean;
   expfailed : boolean;
 ASSIGN
-  bal := balance;
   init(state) := receiving;
   next(state) := 
     case
-      state = receiving & (balance + message > 10 | balance + message < 0) : failed;
+      state = receiving & (balance + message > 100 | balance+ message < 0) : failed;
       control = expected & state = receiving : received;
       TRUE                                     : receiving;
     esac;
@@ -82,11 +81,11 @@ ASSIGN
       state = failed : !expfailed;
       TRUE             : expfailed;
     esac;
---  next(balance) :=
---    case
---	state = receiving & balance + message < 101 & balance + message > -1 : balance + message;
---        TRUE : balance;
---    esac;
+  next(balance) :=
+    case
+  state = receiving & balance + message < 101 & balance+ message > -1 : balance + message;
+        TRUE : balance;
+    esac;
 --FAIRNESS running
 LTLSPEC G F (state = received)
 
@@ -109,8 +108,8 @@ ASSIGN
     esac;
   next(output3) :=
     case
-	forget : output3;
-	TRUE   : balance;
+  forget : output3;
+  TRUE   : balance;
     esac;
 --FAIRNESS running
 FAIRNESS ack & !forget
@@ -122,7 +121,7 @@ FAIRNESS !failedb & !forget
 MODULE b-channel(input1, input2, input3)
 VAR
   forget  : boolean;
-  output1 : -10..10;
+  output1 : -100..100;
   output2 : boolean;
   output3 : boolean;
 ASSIGN
@@ -151,9 +150,9 @@ FAIRNESS !input3 & !forget
 MODULE main
 VAR
   atm0        : atm(ack_channel.output1,ack_channel.output2, ack_channel.output3);
-  bank0       : bank(msg_channel.output1, msg_channel.output2, msg_channel.output3, 100);
+  bank0       : bank(msg_channel.output1, msg_channel.output2, msg_channel.output3);
   msg_channel : b-channel(atm0.message, atm0.control, atm0.confailed);
-  ack_channel : a-channel(bank0.ack, bank0.failedb, bank0.bal);
+  ack_channel : a-channel(bank0.ack, bank0.failedb, bank0.balance);
 ASSIGN
   init(atm0.control)         := FALSE;
   init(atm0.confailed)       := FALSE;
